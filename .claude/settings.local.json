@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Users\\\\kevin\\\\OneDrive\\\\Desktop\\\\smu\\\\dev_source\\\\GitWork\\\\simkbo\\\\backend\" -Depth 3)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(New-Item *)",
+      "Bash(npx create-next-app@14 frontend --typescript --tailwind --eslint --app --no-src-dir --import-alias=\"@/*\" --yes)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(python -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(python3 -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(py -c \"from app.main import app; print\\('OK'\\)\")",
+      "Bash(dir /s /b backend\\\\app\\\\*.py)",
+      "Bash(py -3 --version)",
+      "Bash(py -3 -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(py -3 -c \"import fastapi; print\\('fastapi OK'\\)\")",
+      "Bash(py -3 -c \"import sqlalchemy; print\\('sqlalchemy OK'\\)\")",
+      "Bash(py -3 -c \"import redis; print\\('redis OK'\\)\")",
+      "Bash(py -3 -c \"import apscheduler; print\\('apscheduler OK'\\)\")",
+      "Bash(py -3 -c \"import anthropic; print\\('anthropic OK'\\)\")",
+      "Bash(py -3 -m pip list)",
+      "Bash(py -3 -m venv venv)",
+      "Bash(venv\\\\Scripts\\\\pip install *)",
+      "Bash(\"venv/Scripts/pip\" install *)",
+      "Bash(venv/Scripts/python -c ' *)",
+      "Bash(\"venv/Scripts/python\" -c \"import sys; sys.path.insert\\(0,'.'\\); import app.ml.backtest as b; print\\([x for x in dir\\(b\\) if not x.startswith\\('_'\\)]\\)\")",
+      "Bash(\"venv/Scripts/python\" -c \"import torch; print\\('torch', torch.__version__\\)\")",
+      "Bash(npx next *)",
+      "Bash(exist \"C:\\\\Users\\\\kevin\\\\OneDrive\\\\Desktop\\\\smu\\\\dev_source\\\\GitWork\\\\simkbo\\\\backend\\\\data\\\\cache\\\\player_ids.json\" del \"C:\\\\Users\\\\kevin\\\\OneDrive\\\\Desktop\\\\smu\\\\dev_source\\\\GitWork\\\\simkbo\\\\backend\\\\data\\\\cache\\\\player_ids.json\")",
+      "WebFetch(domain:www.statiz.co.kr)",
+      "PowerShell(docker exec kbo_postgres *)"
+    ]
+  }
+}
