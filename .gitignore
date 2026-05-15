@@ -46,3 +46,6 @@ Thumbs.db
 # ── Docker 볼륨 ──
 postgres_data/
 redis_data/
+
+# ── 기획/디자인 가이드 (로컬 전용) ──
+guide/
