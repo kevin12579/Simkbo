@@ -1,5 +1,5 @@
 """
-단일 경기에 대한 피처 벡터(47개) 생성.
+단일 경기에 대한 피처 벡터(23개) 생성.
 
 ★★★ 핵심 개념: as_of_date ★★★
   - as_of_date = '2024-05-01' 이면, 그 날짜까지만 알 수 있었던 정보만 사용
@@ -14,7 +14,6 @@ from datetime import date, timedelta
 from typing import Optional
 
 import pandas as pd
-import numpy as np
 from sqlalchemy.orm import Session
 
 from app.models.db.game import Game
@@ -22,41 +21,28 @@ from app.models.db.team import Team
 from app.models.db.player import Player
 from app.models.db.team_snapshot import TeamDailySnapshot
 from app.models.db.player_season_stats import PlayerSeasonStats
-from app.models.db.pitcher_game_stats import PitcherGameStats
-from app.models.db.team_game_stats import TeamGameStats
 
-# 피처 컬럼 순서 (변경 금지 — 모델 아티팩트와 동기화)
+# 피처 컬럼 순서 (변경 금지 - 모델 아티팩트와 동기화)
+# 데이터가 실제로 존재하는 피처만 포함 (23개)
 FEATURE_COLUMNS = [
-    # 그룹 1: 팀 누적 통계
+    # 그룹 1: 팀 누적 통계 (team_daily_snapshots)
     "home_season_win_rate", "away_season_win_rate",
     "home_last10_win_rate", "away_last10_win_rate",
     "home_home_win_rate", "away_away_win_rate",
     "home_streak", "away_streak",
-    # 그룹 2: 팀 타격/투구
-    "home_ops", "away_ops",
-    "home_era", "away_era",
+    # 그룹 2: 최근 10경기 득실차 (games 테이블)
     "home_run_diff_last10", "away_run_diff_last10",
-    # 그룹 3: 선발 투수
-    "home_starter_era", "away_starter_era",
-    "home_starter_recent5_era", "away_starter_recent5_era",
-    "home_starter_whip", "away_starter_whip",
-    # 그룹 4: 불펜 & 타선
+    # 그룹 3: 불펜 ERA (player_season_stats)
     "home_bullpen_era", "away_bullpen_era",
-    "home_top5_ops", "away_top5_ops",
-    "home_hr_power", "away_hr_power",
-    # 그룹 5: H2H & 컨텍스트
+    # 그룹 4: H2H & 컨텍스트
     "h2h_home_win_rate",
     "rest_diff", "is_weekend", "is_dome",
-    # 그룹 6: 차이값 피처 (diff)
-    "era_diff", "ops_diff", "last10_wr_diff",
-    "season_wr_diff", "starter_era_diff",
-    "bullpen_era_diff", "top5_ops_diff",
-    "streak_diff", "home_win_rate_diff",
-    "run_diff_diff", "hr_power_diff",
-    "pitcher_whip_diff", "pitcher_recent5_era_diff",
-    "h2h_diff",
+    # 그룹 5: 차이값 피처
+    "last10_wr_diff", "season_wr_diff",
+    "bullpen_era_diff", "streak_diff",
+    "home_win_rate_diff", "run_diff_diff", "h2h_diff",
 ]
-# 총 44개 (인덱스 0~43), 순서 변경 금지
+# 총 23개, 순서 변경 금지
 
 
 def build_features_for_game(
@@ -74,7 +60,7 @@ def build_features_for_game(
         db: SQLAlchemy 세션
 
     Returns:
-        DataFrame shape (1, 47) — FEATURE_COLUMNS 순서
+        DataFrame shape (1, 23) — FEATURE_COLUMNS 순서
     """
     game = db.query(Game).get(game_id)
     if not game:
@@ -85,24 +71,22 @@ def build_features_for_game(
     home_snap = _get_team_snapshot(game.home_team_id, cutoff, db)
     away_snap = _get_team_snapshot(game.away_team_id, cutoff, db)
 
-    prediction = _get_prediction(game_id, db)
-    home_pitcher_id = prediction.home_starter_id if prediction else None
-    away_pitcher_id = prediction.away_starter_id if prediction else None
-
-    home_pitcher_stats = _get_pitcher_stats(home_pitcher_id, game.season, cutoff, db)
-    away_pitcher_stats = _get_pitcher_stats(away_pitcher_id, game.season, cutoff, db)
-
-    home_team_stats = _get_team_season_stats(game.home_team_id, game.season, db)
-    away_team_stats = _get_team_season_stats(game.away_team_id, game.season, db)
-
     home_run_diff = _get_run_diff_last10(game.home_team_id, cutoff, db)
     away_run_diff = _get_run_diff_last10(game.away_team_id, cutoff, db)
+
+    home_bullpen_era = _get_bullpen_era(game.home_team_id, None, game.season, db)
+    away_bullpen_era = _get_bullpen_era(game.away_team_id, None, game.season, db)
+
+    home_home_wr = _get_home_away_win_rate(game.home_team_id, "home", cutoff, db)
+    away_away_wr = _get_home_away_win_rate(game.away_team_id, "away", cutoff, db)
 
     h2h = _get_h2h_win_rate(game.home_team_id, game.away_team_id, cutoff, db)
     rest_diff = _get_rest_diff(game, cutoff, db)
 
     is_weekend = 1 if game.scheduled_at.weekday() >= 5 else 0
-    is_dome = 1 if game.stadium == "고척스카이돔" else 0
+    # game.home_team.is_dome 를 사용 (stadium 문자열 비교보다 정확)
+    home_team = db.query(Team).get(game.home_team_id)
+    is_dome = 1 if (home_team and home_team.is_dome) else 0
 
     home_season_wr = float(home_snap.season_win_rate) if home_snap and home_snap.season_win_rate else 0.5
     away_season_wr = float(away_snap.season_win_rate) if away_snap and away_snap.season_win_rate else 0.5
@@ -116,24 +100,6 @@ def build_features_for_game(
     if away_snap:
         away_streak_val = away_snap.streak_count if away_snap.streak_type == "WIN" else -(away_snap.streak_count or 0)
 
-    home_ops = float(home_team_stats.team_ops) if home_team_stats and home_team_stats.team_ops else 0.720
-    away_ops = float(away_team_stats.team_ops) if away_team_stats and away_team_stats.team_ops else 0.720
-    home_era = float(home_team_stats.team_era) if home_team_stats and home_team_stats.team_era else 4.50
-    away_era = float(away_team_stats.team_era) if away_team_stats and away_team_stats.team_era else 4.50
-
-    home_starter_era = float(home_pitcher_stats.era) if home_pitcher_stats and home_pitcher_stats.era else home_era
-    away_starter_era = float(away_pitcher_stats.era) if away_pitcher_stats and away_pitcher_stats.era else away_era
-    home_starter_recent5_era = _get_pitcher_recent5_era(home_pitcher_id, cutoff, db)
-    away_starter_recent5_era = _get_pitcher_recent5_era(away_pitcher_id, cutoff, db)
-    home_starter_whip = float(home_pitcher_stats.whip) if home_pitcher_stats and home_pitcher_stats.whip else 1.30
-    away_starter_whip = float(away_pitcher_stats.whip) if away_pitcher_stats and away_pitcher_stats.whip else 1.30
-
-    home_bullpen_era = _get_bullpen_era(game.home_team_id, home_pitcher_id, game.season, db)
-    away_bullpen_era = _get_bullpen_era(game.away_team_id, away_pitcher_id, game.season, db)
-
-    home_home_wr = _get_home_away_win_rate(game.home_team_id, "home", cutoff, db)
-    away_away_wr = _get_home_away_win_rate(game.away_team_id, "away", cutoff, db)
-
     features = {
         "home_season_win_rate": home_season_wr,
         "away_season_win_rate": away_season_wr,
@@ -143,42 +109,20 @@ def build_features_for_game(
         "away_away_win_rate": away_away_wr,
         "home_streak": home_streak_val,
         "away_streak": away_streak_val,
-        "home_ops": home_ops,
-        "away_ops": away_ops,
-        "home_era": home_era,
-        "away_era": away_era,
         "home_run_diff_last10": home_run_diff,
         "away_run_diff_last10": away_run_diff,
-        "home_starter_era": home_starter_era,
-        "away_starter_era": away_starter_era,
-        "home_starter_recent5_era": home_starter_recent5_era,
-        "away_starter_recent5_era": away_starter_recent5_era,
-        "home_starter_whip": home_starter_whip,
-        "away_starter_whip": away_starter_whip,
         "home_bullpen_era": home_bullpen_era,
         "away_bullpen_era": away_bullpen_era,
-        "home_top5_ops": 0.720,   # TODO: 타자 데이터 수집 후 구현
-        "away_top5_ops": 0.720,
-        "home_hr_power": 0,       # TODO: 팀 홈런 수 수집 후 구현
-        "away_hr_power": 0,
         "h2h_home_win_rate": h2h,
         "rest_diff": rest_diff,
         "is_weekend": is_weekend,
         "is_dome": is_dome,
-        # 차이값 피처 (diff)
-        "era_diff": away_starter_era - home_starter_era,
-        "ops_diff": home_ops - away_ops,
         "last10_wr_diff": home_last10_wr - away_last10_wr,
         "season_wr_diff": home_season_wr - away_season_wr,
-        "starter_era_diff": away_starter_era - home_starter_era,
         "bullpen_era_diff": away_bullpen_era - home_bullpen_era,
-        "top5_ops_diff": 0.0,
         "streak_diff": home_streak_val - away_streak_val,
         "home_win_rate_diff": home_home_wr - away_away_wr,
         "run_diff_diff": home_run_diff - away_run_diff,
-        "hr_power_diff": 0.0,
-        "pitcher_whip_diff": away_starter_whip - home_starter_whip,
-        "pitcher_recent5_era_diff": away_starter_recent5_era - home_starter_recent5_era,
         "h2h_diff": h2h - 0.5,
     }
 
@@ -199,46 +143,15 @@ def _get_team_snapshot(team_id: int, cutoff: date, db: Session):
     )
 
 
-def _get_pitcher_stats(player_id: Optional[int], season: int, cutoff: date, db: Session):
-    if not player_id:
-        return None
-    return db.query(PlayerSeasonStats).filter_by(player_id=player_id, season=season).first()
-
-
-def _get_pitcher_recent5_era(player_id: Optional[int], cutoff: date, db: Session) -> float:
-    if not player_id:
-        return 4.50
-    stats = (
-        db.query(PitcherGameStats)
-        .join(Game, PitcherGameStats.game_id == Game.id)
-        .filter(
-            PitcherGameStats.player_id == player_id,
-            Game.scheduled_at <= cutoff,
-            PitcherGameStats.is_starter == True,
-        )
-        .order_by(Game.scheduled_at.desc())
-        .limit(5)
-        .all()
-    )
-    if not stats:
-        return 4.50
-    eras = [float(s.era) for s in stats if s.era is not None]
-    return sum(eras) / len(eras) if eras else 4.50
-
-
-def _get_team_season_stats(team_id: int, season: int, db: Session):
-    from app.models.db.team_season_stats import TeamSeasonStats
-    return db.query(TeamSeasonStats).filter_by(team_id=team_id, season=season).first()
-
 
 def _get_run_diff_last10(team_id: int, cutoff: date, db: Session) -> float:
     recent = (
-        db.query(TeamGameStats)
-        .join(Game, TeamGameStats.game_id == Game.id)
+        db.query(Game)
         .filter(
-            TeamGameStats.team_id == team_id,
+            ((Game.home_team_id == team_id) | (Game.away_team_id == team_id)),
             Game.scheduled_at <= cutoff,
             Game.status == "COMPLETED",
+            Game.home_score.isnot(None),
         )
         .order_by(Game.scheduled_at.desc())
         .limit(10)
@@ -246,7 +159,12 @@ def _get_run_diff_last10(team_id: int, cutoff: date, db: Session) -> float:
     )
     if not recent:
         return 0.0
-    diffs = [float((s.runs_scored or 0) - (s.runs_allowed or 0)) for s in recent]
+    diffs = []
+    for g in recent:
+        if g.home_team_id == team_id:
+            diffs.append(float((g.home_score or 0) - (g.away_score or 0)))
+        else:
+            diffs.append(float((g.away_score or 0) - (g.home_score or 0)))
     return sum(diffs) / len(diffs)
 
 
@@ -307,16 +225,6 @@ def _get_home_away_win_rate(team_id: int, location: str, cutoff: date, db: Sessi
     else:
         wins = sum(1 for g in games if g.away_score is not None and g.away_score > g.home_score)
     return wins / len(games)
-
-
-def _get_prediction(game_id: int, db: Session):
-    from app.models.db.prediction import GamePrediction
-    return (
-        db.query(GamePrediction)
-        .filter_by(game_id=game_id, is_final=True)
-        .order_by(GamePrediction.predicted_at.desc())
-        .first()
-    )
 
 
 def _get_bullpen_era(team_id: int, starter_id: Optional[int], season: int, db: Session) -> float:

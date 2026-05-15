@@ -14,6 +14,7 @@ statiz.co.kr에서 선수 시즌 통계 수집.
 import json
 import os
 import re
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -30,8 +31,8 @@ USER_DATA_DIR = os.path.join(os.getcwd(), "playwright_profile")
 
 class StatizCrawler(BaseCrawler):
 
-    def __init__(self):
-        super().__init__(delay=2.5)
+    def __init__(self, delay: float = 7.0):
+        super().__init__(delay=delay)
         self._player_id_cache: dict = {}
         self._load_cache()
 
@@ -65,6 +66,7 @@ class StatizCrawler(BaseCrawler):
             page = context.pages[0]
             try:
                 page.goto(STATIZ_BASE, wait_until="domcontentloaded")
+                time.sleep(self.delay)  # 홈 페이지 로드 후 대기
 
                 # 로그인 여부 확인
                 if page.locator("text=로그인").count() > 0:
@@ -74,6 +76,7 @@ class StatizCrawler(BaseCrawler):
                     input()
 
                 page.goto(url, wait_until="domcontentloaded")
+                time.sleep(self.delay)  # 선수 페이지 로드 후 대기
                 page.wait_for_selector("table", timeout=15000)
                 html_content = page.content()
 

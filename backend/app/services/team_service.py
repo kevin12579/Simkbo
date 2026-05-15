@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 
 from sqlalchemy.orm import Session
 
@@ -25,13 +25,10 @@ def get_team_stats(team_id: int, db: Session, n_games: int = 10) -> dict | None:
     if not team:
         return None
 
-    cutoff = date.today() - timedelta(days=120)
-
     recent_games = (
         db.query(Game)
         .filter(
             Game.status == "COMPLETED",
-            Game.scheduled_at >= cutoff,
             (Game.home_team_id == team_id) | (Game.away_team_id == team_id),
         )
         .order_by(Game.scheduled_at.desc())

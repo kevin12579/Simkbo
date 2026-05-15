@@ -60,7 +60,8 @@ def time_based_backtest(
                         db=db,
                     )
 
-                    raw_proba = model.predict_proba(X[FEATURE_COLUMNS])[0, 1]
+                    features = artifact.get("features", FEATURE_COLUMNS)
+                    raw_proba = model.predict_proba(X[features])[0, 1]
                     pred_proba = calibrator.predict([raw_proba])[0] if calibrator else raw_proba
 
                     actual = 1 if (g.home_score is not None and g.home_score > g.away_score) else 0
