@@ -1,3 +1,4 @@
+import TeamMark from "@/components/game/TeamMark";
 import type { TeamStats } from "@/types";
 
 interface Props {
@@ -6,33 +7,71 @@ interface Props {
 
 export default function TeamStatTable({ stats }: Props) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-center">
-        <thead>
-          <tr className="border-b border-gray-200 text-gray-500 text-xs">
-            <th className="pb-2 text-left pl-2">팀</th>
-            <th className="pb-2">경기</th>
-            <th className="pb-2">승</th>
-            <th className="pb-2">패</th>
-            <th className="pb-2">승률</th>
-            <th className="pb-2">평균득점</th>
-            <th className="pb-2">연속</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stats.map((s) => (
-            <tr key={s.team.id} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2 text-left pl-2 font-semibold text-gray-800">{s.team.short_name}</td>
-              <td className="py-2 text-gray-600">{s.recent_stats.last_n_games}</td>
-              <td className="py-2 text-blue-700 font-medium">{s.recent_stats.wins}</td>
-              <td className="py-2 text-red-600 font-medium">{s.recent_stats.losses}</td>
-              <td className="py-2 text-gray-700">{(s.recent_stats.win_rate * 100).toFixed(1)}%</td>
-              <td className="py-2 text-gray-600">{s.recent_stats.avg_runs_scored.toFixed(1)}</td>
-              <td className="py-2 text-gray-500 text-xs">{s.recent_stats.streak}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ border: "1px solid #dce4f0", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+      {/* Header row */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "50px 2fr 80px 70px 70px 100px 120px 90px",
+        padding: "12px 20px",
+        fontSize: 11, color: "#7886a0", letterSpacing: "0.08em", fontWeight: 600,
+        background: "#f5f8fd", borderBottom: "1px solid #dce4f0",
+      }}>
+        <span>순위</span>
+        <span>팀</span>
+        <span style={{ textAlign: "right" }}>경기</span>
+        <span style={{ textAlign: "right" }}>승</span>
+        <span style={{ textAlign: "right" }}>패</span>
+        <span style={{ textAlign: "right" }}>승률</span>
+        <span style={{ textAlign: "right" }}>평균 득점</span>
+        <span style={{ textAlign: "right" }}>연속</span>
+      </div>
+
+      {stats.map((s, i) => {
+        const { team, recent_stats } = s;
+        const streakWin = recent_stats.streak.startsWith("W");
+        return (
+          <div key={team.id} style={{
+            display: "grid",
+            gridTemplateColumns: "50px 2fr 80px 70px 70px 100px 120px 90px",
+            padding: "14px 20px",
+            fontSize: 13, alignItems: "center",
+            borderBottom: i < stats.length - 1 ? "1px solid #eef2f9" : "none",
+            background: i < 5 ? "#fff" : "#fafcff",
+          }}>
+            <span style={{
+              fontFamily: "var(--font-mono)", fontWeight: 700,
+              color: i < 5 ? "#c8102e" : "#9aa5bd",
+            }}>
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <TeamMark shortName={team.short_name} size={28} />
+              <span style={{ fontWeight: 600 }}>{team.short_name}</span>
+            </span>
+            <span style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: "#4a5872" }}>
+              {recent_stats.last_n_games}
+            </span>
+            <span style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 600 }}>
+              {recent_stats.wins}
+            </span>
+            <span style={{ textAlign: "right", fontFamily: "var(--font-mono)", color: "#4a5872" }}>
+              {recent_stats.losses}
+            </span>
+            <span style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 14 }}>
+              {(recent_stats.win_rate * 100).toFixed(1)}%
+            </span>
+            <span style={{ textAlign: "right", fontFamily: "var(--font-mono)", fontSize: 12, color: "#4a5872" }}>
+              {recent_stats.avg_runs_scored.toFixed(1)}
+            </span>
+            <span style={{
+              textAlign: "right", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 13,
+              color: streakWin ? "#1a7a3a" : "#c8102e",
+            }}>
+              {recent_stats.streak}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
